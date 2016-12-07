@@ -12,12 +12,26 @@ import java.util.regex.Pattern;
  */
 public class ResumesLoader {
 
+    static final String headHunterSearchResumeBaseURL = "https://api.hh.ru/resumes/";
+
+    String[] specializations = {"1.232","1.296","1.536","1.30","1.3",
+    "1.359","1.113","1.50","1.395","1.246","1.274","1.161","1.475","1.277",
+    "1.400","1.474","1.221","1.273","1.82","1.89","1.270","1.327","1.295","1.211",
+            "1.10","1.172","1.203","1.117","1.110","1.225","1.9","1.25","1.420","1.137",
+            "1.116","1.400"};
+
+    String[] expirience = {"noExperience","between1And3","between3And6","experience=moreThan6"};
+
+    MongoManager mongoManager;
     private List<String> idsList = new ArrayList<String>();
+
+    boolean noNextPage
 
     public void loadWithURL(String url) throws IOException {
 
+        mongoManager = new MongoManager();
         sendGET(url);
-        for (int i=1;i< 10;i++){
+        for (int i=1;i< 250;i++){
             String pageUrl = url + "&page="+i;
             sendGET(url);
         }
@@ -87,6 +101,9 @@ public class ResumesLoader {
             in.close();
 
             // print result
+
+            mongoManager.insertResumeJson(response.toString());
+
             System.out.println("Response length: " + response.toString().length());
             System.out.println(response.toString());
             writeToFile(response.toString());
