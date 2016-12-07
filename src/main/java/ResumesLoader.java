@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Formatter;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -25,25 +26,70 @@ public class ResumesLoader {
     MongoManager mongoManager;
     private List<String> idsList = new ArrayList<String>();
 
-    boolean noNextPage
+    boolean noNextPage;
 
     public void loadWithURL(String url) throws IOException {
 
         mongoManager = new MongoManager();
-        sendGET(url);
-        for (int i=1;i< 250;i++){
-            String pageUrl = url + "&page="+i;
+        String currentURL;
+
+        for (int area = 1; area < 13; area++){
+            String areaString = String.valueOf(area);
+            for (int specialization = 0; specialization < specializations.length;specialization++){
+                String sp = specializations[specialization];
+                for (int exp = 0; exp < expirience.length; exp++){
+                    String expString = expirience[exp];
+                    for (int age = 17; age < 70; ) {
+                        String age_from = String.valueOf(age);
+                        String age_to = String.valueOf(age + 2);
+
+                        Formatter f = new Formatter();
+                        f.format("https://spb.hh.ru/search/resume?exp_period=all_time&order_by=publication_time&specialization=%s&area=%s&text=&pos=full_text&experience=%s&label=only_with_age&logic=normal&clusters=true&age_to=%s&age_from=%s&from=cluster_age",
+                                sp, areaString,expString,age_to,age_from);
+                        currentURL = f.toString();
+                        System.out.println(currentURL);
+                        loadAllSearchPagesWithURL(currentURL);
+                        age += 2;
+                    }
+                }
+            }
+        }
+    }
+
+    private void loadAllSearchPagesWithURL(String url){
+
+        idsList.clear();
+        noNextPage = false;
+
+        try {
             sendGET(url);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        for (int i=1;i< 250;i++){
+            if (noNextPage){
+                break;
+            }
+            String pageUrl = url + "&page="+i;
+            try {
+                sendGET(pageUrl);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         System.out.println("Count resumes: " + idsList.size());
         Iterator<String> crunchifyIterator = idsList.iterator();
         while (crunchifyIterator.hasNext()) {
             String resume = "https://api.hh.ru/resumes/"+ crunchifyIterator.next();
             System.out.println(resume);
-            getResume(resume);
+            try {
+                getResume(resume);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-
     }
+
 
     private void sendGET(String url) throws IOException {
         URL obj = new URL(url);
@@ -65,6 +111,7 @@ public class ResumesLoader {
             Pattern p = Pattern.compile("href=\"\\/resume\\/?[0-9a-z]*");
             Matcher m = p.matcher(response);
 
+            int idsListCount = idsList.size();
             while (m.find()) {
                 String href = m.group();
                 Pattern idPattern = Pattern.compile("\\w{38}");
@@ -78,6 +125,10 @@ public class ResumesLoader {
 
             System.out.println("Response length: " + response.toString().length());
             System.out.println(response.toString());
+
+            if (idsListCount == idsList.size()){
+                noNextPage = true;
+            }
         } else {
             System.out.println("GET request not worked");
         }
@@ -106,7 +157,7 @@ public class ResumesLoader {
 
             System.out.println("Response length: " + response.toString().length());
             System.out.println(response.toString());
-            writeToFile(response.toString());
+            //writeToFile(response.toString());
         } else {
             System.out.println("GET request not worked");
         }
