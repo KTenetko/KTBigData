@@ -15,33 +15,41 @@ public class ResumesLoader {
 
     static final String headHunterSearchResumeBaseURL = "https://api.hh.ru/resumes/";
 
-    String[] specializations = {"1.232","1.296","1.536","1.30","1.3",
-    "1.359","1.113","1.50","1.395","1.246","1.274","1.161","1.475","1.277",
-    "1.400","1.474","1.221","1.273","1.82","1.89","1.270","1.327","1.295","1.211",
+    String[] specializations = {"1.221","1.273","1.82","1.89","1.270","1.327","1.295","1.211",
             "1.10","1.172","1.203","1.117","1.110","1.225","1.9","1.25","1.420","1.137",
-            "1.116","1.400"};
+            "1.116","1.232","1.296","1.536","1.30","1.3",
+    "1.359","1.113","1.50","1.395","1.246","1.274","1.161","1.475","1.277",
+    "1.400","1.474"};
 
     String[] expirience = {"noExperience","between1And3","between3And6","experience=moreThan6"};
 
     MongoManager mongoManager;
     private List<String> idsList = new ArrayList<String>();
+    private int addedResumes = 0;
+    private int totalLoaded = 0;
+
 
     boolean noNextPage;
 
-    public void loadWithURL(String url) throws IOException {
+    public void loadResumes() throws IOException {
 
         mongoManager = new MongoManager();
         String currentURL;
 
-        for (int area = 1; area < 13; area++){
+        for (int area = 2; area < 13; area++){
             String areaString = String.valueOf(area);
-            for (int specialization = 0; specialization < specializations.length;specialization++){
+            int specialization = area == 2 ? 13 : 0;
+            for (; specialization < specializations.length;specialization++){
                 String sp = specializations[specialization];
-                for (int exp = 0; exp < expirience.length; exp++){
+                int exp = specialization < 5 && area == 2 ? 7 : 0;
+                for (; exp < expirience.length; exp++){
                     String expString = expirience[exp];
-                    for (int age = 17; age < 70; ) {
+                    int age = specialization < 5 && area == 13 && exp == 3 ? 26 : 17;
+                    for (; age < 70; ) {
                         String age_from = String.valueOf(age);
                         String age_to = String.valueOf(age + 2);
+                        System.out.println("Area:"+area+" Speciazization:"+specialization+"/"+specializations.length+"("+sp+")"+" Exp:"+expString+" Age:"+
+                        age_from+"-"+age_to);
 
                         Formatter f = new Formatter();
                         f.format("https://spb.hh.ru/search/resume?exp_period=all_time&order_by=publication_time&specialization=%s&area=%s&text=&pos=full_text&experience=%s&label=only_with_age&logic=normal&clusters=true&age_to=%s&age_from=%s&from=cluster_age",
@@ -49,16 +57,24 @@ public class ResumesLoader {
                         currentURL = f.toString();
                         System.out.println(currentURL);
                         loadAllSearchPagesWithURL(currentURL);
-                        age += 2;
+                        age += 3;
+                        totalLoaded += addedResumes;
+                        System.out.println("Total load from start:" + totalLoaded);
+                        System.out.println("-------------------------------------");
                     }
                 }
             }
         }
     }
 
+    // area = 2
+    // spec = 5
+    // exp = 3
+    // age = 23-25
     private void loadAllSearchPagesWithURL(String url){
 
         idsList.clear();
+        addedResumes = 0;
         noNextPage = false;
 
         try {
@@ -68,6 +84,7 @@ public class ResumesLoader {
         }
         for (int i=1;i< 250;i++){
             if (noNextPage){
+                System.out.println("Load pages before noNext:" + i);
                 break;
             }
             String pageUrl = url + "&page="+i;
@@ -76,18 +93,22 @@ public class ResumesLoader {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            if (i == 249){
+                System.out.println("Load all pages:" + i);
+            }
         }
-        System.out.println("Count resumes: " + idsList.size());
         Iterator<String> crunchifyIterator = idsList.iterator();
         while (crunchifyIterator.hasNext()) {
             String resume = "https://api.hh.ru/resumes/"+ crunchifyIterator.next();
-            System.out.println(resume);
+            //System.out.println(resume);
             try {
                 getResume(resume);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+        System.out.println("Iterations stats:" + addedResumes + "/" +idsList.size());
+
     }
 
 
@@ -96,7 +117,7 @@ public class ResumesLoader {
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();
         con.setRequestMethod("GET");
         int responseCode = con.getResponseCode();
-        System.out.println("GET Response Code :: " + responseCode);
+        //System.out.println("GET Response Code :: " + responseCode);
         if (responseCode == HttpURLConnection.HTTP_OK) { // success
             BufferedReader in = new BufferedReader(new InputStreamReader(
                     con.getInputStream()));
@@ -118,19 +139,18 @@ public class ResumesLoader {
                 Matcher idMatcher = idPattern.matcher(href);
                 while (idMatcher.find()) {
                     String id = idMatcher.group();
-                    System.out.println(id);
                     idsList.add(id);
                 }
             }
 
-            System.out.println("Response length: " + response.toString().length());
-            System.out.println(response.toString());
+            //System.out.println("Response length: " + response.toString().length());
+            //System.out.println(response.toString());
 
             if (idsListCount == idsList.size()){
                 noNextPage = true;
             }
         } else {
-            System.out.println("GET request not worked");
+            System.out.println("Request not worked: "+ url);
         }
     }
 
@@ -139,7 +159,7 @@ public class ResumesLoader {
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();
         con.setRequestMethod("GET");
         int responseCode = con.getResponseCode();
-        System.out.println("GET Response Code :: " + responseCode);
+        //System.out.println("GET Response Code :: " + responseCode);
         if (responseCode == HttpURLConnection.HTTP_OK) { // success
             BufferedReader in = new BufferedReader(new InputStreamReader(
                     con.getInputStream()));
@@ -153,34 +173,12 @@ public class ResumesLoader {
 
             // print result
 
-            mongoManager.insertResumeJson(response.toString());
-
-            System.out.println("Response length: " + response.toString().length());
-            System.out.println(response.toString());
-            //writeToFile(response.toString());
+            boolean result = mongoManager.insertResumeJson(response.toString());
+            if (result == true){
+                addedResumes++;
+            }
         } else {
             System.out.println("GET request not worked");
         }
     }
-
-    private void writeToFile(String data){
-        try{
-            File file =new File("resume.txt");
-
-            //if file doesnt exists, then create it
-            if(!file.exists()){
-                file.createNewFile();
-            }
-
-            //true = append file
-            FileWriter fileWritter = new FileWriter(file.getName(),true);
-            BufferedWriter bufferWritter = new BufferedWriter(fileWritter);
-            bufferWritter.write(data);
-            bufferWritter.write("\n");
-            bufferWritter.close();
-        }catch(IOException e){
-            e.printStackTrace();
-        }
-    }
-
 }

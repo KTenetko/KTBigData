@@ -22,7 +22,7 @@ public class MongoManager {
         }
     }
 
-    public void insertResumeJson(String json){
+    public boolean insertResumeJson(String json){
         DBObject dbObject = (DBObject) JSON.parse(json);
         try{
             WriteResult result = resumeCollection.insert(dbObject);
@@ -30,18 +30,20 @@ public class MongoManager {
 
             if (!cmdResult.ok()){
                 System.out.println("Error : " + cmdResult.getErrorMessage());
+                return false;
             }
-
-            DBCursor cursorDocJSON = resumeCollection.find();
-            System.out.println("Cursor count " + cursorDocJSON.size());
         } catch (MongoException e){
             if (e.getCode() == 11000){
-                System.out.println("ResumesCollection already has this resume");
+                //System.out.println("ResumesCollection already has this resume");
+                return false;
             } else {
                 e.printStackTrace();
+                return false;
             }
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
+        return true;
     }
 }
