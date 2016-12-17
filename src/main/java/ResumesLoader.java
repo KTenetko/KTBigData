@@ -97,9 +97,9 @@ public class ResumesLoader {
                 System.out.println("Load all pages:" + i);
             }
         }
-        Iterator<String> crunchifyIterator = idsList.iterator();
-        while (crunchifyIterator.hasNext()) {
-            String resume = "https://api.hh.ru/resumes/"+ crunchifyIterator.next();
+        Iterator<String> iterator = idsList.iterator();
+        while (iterator.hasNext()) {
+            String resume = "https://api.hh.ru/resumes/"+ iterator.next();
             //System.out.println(resume);
             try {
                 getResume(resume);
